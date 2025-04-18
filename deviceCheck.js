@@ -3,7 +3,7 @@
 
   const isMobile = deviceWidth <= 720;
   const desktopPath = '/PromptToHTML';
-  const mobilePath = '/PromptToHTML/m.html';
+  const mobilePath = '/PromptToHTML/m';
 
   if (currentPath === desktopPath || currentPath === mobilePath) {
     if (isMobile && currentPath !== mobilePath) {

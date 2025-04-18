@@ -1,74 +1,66 @@
 const editor = document.getElementById("editor");
 const output = document.getElementById("output");
-
-// Function to process the raw Markdown text before rendering
+// Function to process the raw Markdown before converting it to HTML
 function processMarkdownForKaTeX(rawMarkdown) {
-    // Step 1: Handle inline $$...$$ math and convert them to $...$
-    // This finds $$...$$ on the same line and converts it to inline $...$
+    // Step 1: Convert inline $$...$$ (same-line) math to $...$
     rawMarkdown = rawMarkdown.replace(/([^\n])\$\$(.+?)\$\$/g, (_, before, expr) => {
-      return `${before} $${expr}$`;  // Convert multi-line $$...$$ to inline $...$
+      return `${before} $${expr}$`; // Inline math: use single dollar
     });
   
-    // Step 2: Handle multi-line $$...$$ and convert them to single-line $$...$$
-    // This finds $$...$$ formulas that span multiple lines and joins them into one line
-    rawMarkdown = rawMarkdown.replace(/^\$\$(.+?)\$\$$/gms, (_, expr) => {
-      // Join content into a single line, replacing newlines with spaces and trimming excess whitespace
-      const singleLineExpr = expr.replace(/\n/g, ' ').trim();
-      return `$$${singleLineExpr}$$`; // Return the single-line $$...$$ formula
+    // Step 2: Convert multi-line $$...$$ to a single-line $$...$$ block
+    rawMarkdown = rawMarkdown.replace(/\$\$([\s\S]+?)\$\$/gm, (_, expr) => {
+      const singleLineExpr = expr.replace(/\n/g, ' ').trim(); // Replace newlines inside $$ with spaces
+      return `$$${singleLineExpr}$$`; // Wrap in $$ again
     });
   
-    // Step 3: Replace block \[...\] formulas with single-line \\[...\] format
-    // This replaces any block math notation (spanning multiple lines) with single-line \\[...\]
+    // Step 3: Convert \[...\] block formulas into single-line \\[ ... \\]
     rawMarkdown = rawMarkdown.replace(/\\\[(.+?)\\\]/gms, (_, expr) => {
-      // Join multi-line content into a single line, replacing newlines with spaces
       const singleLineExpr = expr.replace(/\n/g, ' ').trim();
-      return `\\\\[ ${singleLineExpr} \\\\]`; // Return a single-line block formula \\[ ... \\]
+      return `\\\\[ ${singleLineExpr} \\\\]`; // Wrap in escaped brackets
     });
   
-    // Step 4: Replace inline \( ... \) formulas with \\( ... \\)
-    // This converts inline formulas wrapped in \( ... \) to \\( ... \\)
+    // Step 4: Convert \( ... \) inline formulas into \\( ... \\)
     rawMarkdown = rawMarkdown.replace(/\\\((.+?)\\\)/g, (_, expr) => {
-      return `\\\\( ${expr} \\\\)`; // Convert \( ... \) to \\( ... \\) for inline math
+      return `\\\\( ${expr.trim()} \\\\)`; // Wrap in escaped inline math brackets
     });
   
-    return rawMarkdown; // Return the processed markdown text
+    return rawMarkdown; // Return cleaned-up markdown for math rendering
   }
   
-  // Function to render the processed Markdown into HTML and render math with KaTeX
+  // Function to render the processed Markdown
   function renderMarkdown() {
-    let rawMarkdown = editor.value; // Get the raw markdown text from the editor
+    let rawMarkdown = editor.value; // Get input from textarea or editor
   
-    // Step 1: Process the raw markdown to handle the $$...$$, \( ... \), and \[...\] properly
+    // Clean and process math expressions before rendering
     rawMarkdown = processMarkdownForKaTeX(rawMarkdown);
   
-    // Step 2: Convert the processed Markdown to HTML using the marked library
+    // Parse Markdown into HTML using marked
     const html = marked.parse(rawMarkdown, {
-      breaks: true, // Allow line breaks to be converted to <br> tags
+      breaks: true, // Convert single newlines into <br>
       highlight: function (code, lang) {
-        const validLang = hljs.getLanguage(lang) ? lang : "plaintext"; // Check if the language is valid
-        return hljs.highlight(code, { language: validLang }).value; // Highlight the code block if valid
+        const validLang = hljs.getLanguage(lang) ? lang : "plaintext";
+        return hljs.highlight(code, { language: validLang }).value;
       },
     });
   
-    // Step 3: Insert the converted HTML into the output container
+    // Inject parsed HTML into output container
     output.innerHTML = html;
   
-    // Step 4: Use KaTeX to render the math expressions (both inline and block) inside the output HTML
+    // Render all math expressions in the output using KaTeX
     renderMathInElement(output, {
       delimiters: [
-        { left: "$$", right: "$$", display: true },  // For block formulas (display style)
-        { left: "\\[", right: "\\]", display: true }, // For block formulas (display style)
-        { left: "$", right: "$", display: false },   // For inline formulas
-        { left: "\\(", right: "\\)", display: false } // For inline formulas
+        { left: "$$", right: "$$", display: true },     // For block math
+        { left: "\\[", right: "\\]", display: true },   // Alternate block syntax
+        { left: "$", right: "$", display: false },      // Inline math
+        { left: "\\(", right: "\\)", display: false },  // Alternate inline
       ],
-      throwOnError: false  // Don't throw errors if a math formula is invalid
+      throwOnError: false // Prevent KaTeX from throwing on syntax errors
     });
   
-    // Step 5: Highlight any code blocks using Highlight.js (optional, for syntax highlighting)
+    // Highlight code blocks
     hljs.highlightAll();
   }
   
-
-  editor.addEventListener("input", renderMarkdown);
-  window.addEventListener("load", renderMarkdown);
-  
+  // Event listeners to trigger rendering
+  editor.addEventListener("input", renderMarkdown); // When typing in editor
+  window.addEventListener("load", renderMarkdown);  // On initial page load
